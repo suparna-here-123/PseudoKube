@@ -1,0 +1,6 @@
+docker
+fastapi[standard]
+uvicorn[standard]
+shortuuid
+dotenv
+redis
