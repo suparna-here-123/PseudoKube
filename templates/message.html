@@ -57,10 +57,21 @@
     <div class="message-card">
         <h1>Message</h1>
         <p>{{ msg1 }}</p>
+    
         {% if podID %}
-        <p><strong>Pod ID:</strong> {{ podID }}</p>
-        <p><strong>Scheduled on Node:</strong> {{ nodeID }}</p>
+            <p>Pod ID: {{ podID }}</p>
         {% endif %}
+    
+        {% if nodeID %}
+            <p>Node ID: {{ nodeID }}</p>
+        {% endif %}
+    
+        {% if msg2 and not podID and not nodeID %}
+            <p>{{ msg2 }}</p>
+        {% endif %}
+    
+        <a href="/" class="back-btn">Go Back</a>
     </div>
+    
 </body>
 </html>

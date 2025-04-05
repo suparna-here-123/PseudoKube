@@ -21,7 +21,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
 async def landingPage(request : Request) :
-    return templates.TemplateResponse("schedulePod.html", {"request" : request})
+    return templates.TemplateResponse("addNode.html", {"request" : request})
     # return {"message" : "Landing page"}
 
 # GET endpoint coz I'm passing cpuCount as a queryParam - easy af
@@ -45,22 +45,28 @@ async def showMsg(request: Request, msg: str):
     parts = msg.split("|", maxsplit=1)
     msg1 = parts[0]
 
-    # Split Pod ID and Node ID separately if possible
-    pod_node_info = parts[1] if len(parts) > 1 else ""
+    # Default values
     pod_id = ""
     node_id = ""
+    msg2 = parts[1] if len(parts) > 1 else ""
 
-    if "Pod ID:" in pod_node_info and "Scheduled on Node:" in pod_node_info:
+    # Handle Pod scheduling message
+    if "Pod ID:" in msg2 and "Scheduled on Node:" in msg2:
         try:
-            pod_part, node_part = pod_node_info.split(" | ")
+            pod_part, node_part = msg2.split(" | ")
             pod_id = pod_part.replace("Pod ID:", "").strip()
             node_id = node_part.replace("Scheduled on Node:", "").strip()
         except:
-            pass
+            msg2 = parts[1] if len(parts) > 1 else ""
+
+    # Handle Node registration message
+    elif "The node ID is :" in msg2:
+        node_id = msg2.replace("The node ID is :", "").strip()
 
     return templates.TemplateResponse("message.html", {
         "request": request,
         "msg1": msg1,
+        "msg2": msg2,
         "podID": pod_id,
         "nodeID": node_id
     })
@@ -83,10 +89,6 @@ async def schedulePod(request: Request, podCpuCount: int):
     msgStr = f"{msg1}|{msg2}"
     print(">>> Message string going to /showMsg:", msgStr)  # 🪵 Debug log
     return RedirectResponse(f"/showMsg?msg={msgStr}", status_code=302)
-
-    
-    msgStr = "|".join(msgList)
-    return RedirectResponse(f"/showMsg?msg={msgStr}")
 
 if __name__ == "__main__" :
     uvicorn.run(app, host="localhost")
