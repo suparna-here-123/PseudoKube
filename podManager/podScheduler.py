@@ -26,8 +26,14 @@ def schedule_pod(podCpuCount: int):
 
     if best_fit_node:
         podID = shortuuid.uuid()
-        r.hincrby(best_fit_node, "cpuCount", -podCpuCount)
+        
+        # Decrement availableCpu NOT cpuCount
+        r.hincrby(best_fit_node, "availableCpu", -podCpuCount)
+        
+        # Store pod info (you can keep this structure or modify it)
         r.hset(f"{best_fit_node}_pod_{podID}", "podCpuCount", podCpuCount)
+
+        # Update global total available CPU count
         r.decrby("totalCpuCount", podCpuCount)
 
         return {
