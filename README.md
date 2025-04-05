@@ -7,7 +7,7 @@ Frontend of app, accepts user inputs to create and monitor nodes
 Python dependencies to be installed
 
 ## .env
-* In case there's an issue connecting to docker daemon from python script, run `docker context inspect $(docker context show) | awk -F '"' '/"Host"/ {print $4}` and save that to the `DOCKER_HOST` variable
+* In case there's an issue connecting to docker daemon from python script, run `docker context inspect $(docker context show) | awk -F '"' '/"Host"/ {print $4}'` and save that to the `DOCKER_HOST` variable
 
 * Pull redis docker image and run it on port of your choice, set it in `REDIS_PORT`
 

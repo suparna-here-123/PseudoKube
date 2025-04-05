@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dead Nodes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f2f4f8;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        table {
+            width: 90%;
+            margin: 2rem auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dead Nodes Report</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Node ID</th>
+                <th>CPU Count</th>
+                <th>Pod CPU Usage</th>
+                <th>Node Port</th>
+                <th>Last Alive At</th>
+                <th>Active Pods</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for node_id, info in deadNodes.items() %}
+            <tr>
+                <td>{{ node_id }}</td>
+                <td>{{ info.nodeCpus }}</td>
+                <td>{{ info.podsCpus }}</td>
+                <td>{{ info.nodePort }}</td>
+                <td>{{ info.lastAliveAt }}</td>
+                <td>{{ info.activePods }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- <div class="footer">
+        Updated at {{ current_time }}
+    </div> -->
+</body>
+</html>
