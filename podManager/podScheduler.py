@@ -10,11 +10,11 @@ def schedule_pod(podCpuCount: int):
     min_leftover = float('inf')
 
     for node_id in all_keys:
-        if node_id in ['totalCpuCount']:
+        if node_id in ['totalCpuCount'] or "_pods" in node_id:
             continue
 
         try:
-            cpu_available = int(r.hget(node_id, 'cpuCount'))
+            cpu_available = int(r.hget(node_id, 'availableCpu'))
 
             if cpu_available >= podCpuCount:
                 leftover = cpu_available - podCpuCount
@@ -26,12 +26,12 @@ def schedule_pod(podCpuCount: int):
 
     if best_fit_node:
         podID = shortuuid.uuid()
-        
-        # Decrement availableCpu NOT cpuCount
+
+        # Decrement availableCpu
         r.hincrby(best_fit_node, "availableCpu", -podCpuCount)
-        
-        # Store pod info (you can keep this structure or modify it)
-        r.hset(f"{best_fit_node}_pod_{podID}", "podCpuCount", podCpuCount)
+
+        # Store pod inside the node’s podsInfo hash
+        r.hset(f"{best_fit_node}_pods", podID, podCpuCount)
 
         # Update global total available CPU count
         r.decrby("totalCpuCount", podCpuCount)

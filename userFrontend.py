@@ -1,6 +1,7 @@
 '''
 nodeInfo format : 
 {nodeID : {cpuCount : ___,
+            availableCpu : ___,
            podsInfo : {
                 podID : ___,
                 podCpuCount : ____
@@ -21,7 +22,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
 async def landingPage(request : Request) :
-    return templates.TemplateResponse("addNode.html", {"request" : request})
+    return templates.TemplateResponse("schedulePod.html", {"request" : request})
     # return {"message" : "Landing page"}
 
 # GET endpoint coz I'm passing cpuCount as a queryParam - easy af
