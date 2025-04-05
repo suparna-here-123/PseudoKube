@@ -46,6 +46,8 @@ def registerNode(nodeInfo : dict) :
 
         # Update global total CPU count
         r.incrby("totalCpuCount", cpuCount)
+        # Update available CPU count
+        r.incrby("availableCpu", cpuCount)
 
         return ["Registered node successfully :D", "The node ID is : " + nodeID]
     except Exception as e:
