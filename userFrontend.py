@@ -72,10 +72,12 @@ async def showMsg(request: Request, msg: str):
         "nodeID": node_id
     })
 
+# Form for sending the podCpuCount param (cpu required for the pod)
 @app.get("/scheduleForm", response_class=HTMLResponse)
 async def showScheduleForm(request: Request):
     return templates.TemplateResponse("schedulePod.html", {"request": request})
 
+# Taking the podCpuCount param as an int and not a str as it is easier for computation during the best fit scheduling part
 @app.get("/schedulePod")
 async def schedulePod(request: Request, podCpuCount: int):
     result = schedule_pod(podCpuCount)

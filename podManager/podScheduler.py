@@ -2,12 +2,16 @@ import redis, os, shortuuid
 from dotenv import load_dotenv
 load_dotenv()
 
+# using best fit algorithm to schedule pods as of now, can be changed to first fit or worst fit if required
+
 def schedule_pod(podCpuCount: int):
     r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
     all_keys = r.keys()
 
     best_fit_node = None
     min_leftover = float('inf')
+
+    # for every node in the cluster, check if the available CPU is greater than or equal to the podCpuCount. From those that are, find the one with the least leftover CPU and allocate the pod to that node.
 
     for node_id in all_keys:
         if node_id in ['totalCpuCount'] or "_pods" in node_id:
