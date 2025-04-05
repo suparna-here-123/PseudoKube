@@ -32,6 +32,24 @@
         .message-card p {
             font-size: 1.2rem;
             color: #555;
+            margin: 0.5rem 0;
+        }
+
+        .back-btn {
+            margin-top: 1.5rem;
+            display: inline-block;
+            padding: 0.6rem 1.2rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background-color: #2980b9;
         }
     </style>
 </head>
@@ -39,7 +57,10 @@
     <div class="message-card">
         <h1>Message</h1>
         <p>{{ msg1 }}</p>
-        <p>{{ msg2 }}</p>
+        {% if podID %}
+        <p><strong>Pod ID:</strong> {{ podID }}</p>
+        <p><strong>Scheduled on Node:</strong> {{ nodeID }}</p>
+        {% endif %}
     </div>
 </body>
 </html>
