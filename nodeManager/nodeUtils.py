@@ -57,7 +57,8 @@ def updateHeartbeat(hb:dict) :
 # Checks if nodes are alive every 10 seconds
 def monitorHeartbeat() :
     while True :
-        #print('Checking...')
+        time.sleep(5)
+        print('Checking...')
         rn = time.time()
         allNodes = r.hgetall('allNodes')
         for nodeID, nodeInfo in allNodes.items() :
@@ -65,8 +66,7 @@ def monitorHeartbeat() :
             if rn - nodeInfo.get('lastAliveAt', 0) > 10 :
                 nodeInfo['status'] = 'DEAD'
                 r.hset("allNodes", nodeID, json.dumps(nodeInfo))
-                #print(nodeID)
-        time.sleep(10)
+                print(nodeID)
 
 # Returns dead nodes in format {nodeID : {nodeInfo}}
 def getDeadNodes() :
@@ -75,9 +75,10 @@ def getDeadNodes() :
     for nodeID, nodeInfo in allNodes.items() :
         nodeInfo = json.loads(nodeInfo)
         if nodeInfo['status'] == 'DEAD' :
+            nodeInfo['aliveMinsAgo'] = (time.time() - nodeInfo['lastAliveAt']) // 60
             deadNodes[nodeID] = nodeInfo
     return deadNodes
 
     
-if __name__ == "__main__" :
-    monitorHeartbeat()
+# if __name__ == "__main__" :
+#     monitorHeartbeat()

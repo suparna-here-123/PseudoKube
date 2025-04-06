@@ -110,6 +110,6 @@ async def showMsg(request : Request, msg : str) :
     return templates.TemplateResponse("message.html", {"request" : request, "msg" : msg})
 
 if __name__ == "__main__" :
-    #hbt = Thread(target=monitorHeartbeat, daemon=True)
-    #hbt.start()
+    hbt = Thread(target=monitorHeartbeat, daemon=True)
+    hbt.start()
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -59,7 +59,7 @@
                 <th>CPU Count</th>
                 <th>Pod CPU Usage</th>
                 <th>Node Port</th>
-                <th>Last Alive At (epoch)</th>
+                <th>Last Alive (in mins ago)</th>
                 <th>Active Pods</th>
             </tr>
         </thead>
@@ -70,7 +70,7 @@
                 <td>{{ info.nodeCpus }}</td>
                 <td>{{ info.podsCpus }}</td>
                 <td>{{ info.nodePort }}</td>
-                <td>{{ info.lastAliveAt }}</td>
+                <td>{{ info.aliveMinsAgo }}</td>
                 <td>{{ info.activePods }}</td>
             </tr>
             {% endfor %}

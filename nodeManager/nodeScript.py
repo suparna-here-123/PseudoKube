@@ -52,8 +52,7 @@ def sendHeartbeat() :
         hb = {"nodeID" : nodeID, 
               "podsCpus" : podsCpuCount,
               "lastAliveAt" : int(time.time()),
-              "activePods" : len(pods),
-              "status" : "ALIVE"
+              "activePods" : len(pods)
              }
         
         response = requests.post(url="http://host.docker.internal:8000/heartbeats", 
@@ -66,7 +65,6 @@ def sendHeartbeat() :
         time.sleep(5)
 
 if __name__ == "__main__" :
-    # hbt = Thread(target=sendHeartbeat, daemon=True)
-    # hbt.start()
-    # uvicorn.run(app, host='0.0.0.0', port=nodePort)
-    sendHeartbeat()
+    hbt = Thread(target=sendHeartbeat, daemon=True)
+    hbt.start()
+    uvicorn.run(app, host='0.0.0.0', port=nodePort)
