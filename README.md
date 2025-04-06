@@ -1,4 +1,8 @@
-### PseudoK8s
+# PseudoK8s
+
+## Prerequisites to run container using python API for docker
+* Add project directory containing files `<project_dir>/nodeManager/nodeScript.py` and `<project_dir>/requirements.txt` to virtual file under `Docker Settings` -> ``
+
 
 ## userFrontend.py
 Frontend of app, accepts user inputs to create and monitor nodes
@@ -14,14 +18,14 @@ Python dependencies to be installed
 ## nodeManager
 Contains all files required by the node manager
 
-# nodeScript.py
+## nodeScript.py
 Script that runs in every node once spawned.
 Sends heartbeats to node manager, maintains pod array
 
-# nodeUtils
+## nodeUtils
 Helper functions required by `/userFrontend.py`
 
-# nodeInfo format : 
+## nodeInfo format : 
 {nodeID : {
     cpuCount : ___,
            podsInfo : {

@@ -3,7 +3,7 @@ import redis, os, time, requests
 from dotenv import load_dotenv
 
 load_dotenv()
-r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
+r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT")), decode_responses=True)
 
 def createNode(cpuCount:int, nodePort:int) :
     try :
@@ -11,15 +11,12 @@ def createNode(cpuCount:int, nodePort:int) :
         nodeID = shortuuid.uuid()
         newNode = client.containers.run(
         image="python",
-        command=f"python3 /app/nodeScript.py {nodeID} {nodePort} {cpuCount}",
-        volumes={
-                "/home/suppra/Desktop/CloudComputing/PseudoKube/nodeManager": {
-                "bind": "/app",
-                "mode": "ro"
-            }
-        },
-            detach=True,
-            name="cont_" + nodeID
+        command=["sh", "-c", f"pip install -r /app/nodeManager/nodeRequirements.txt && python3 /app/nodeManager/nodeScript.py {nodeID} {nodePort} {cpuCount}"],
+        volumes={"/home/suppra/Desktop/CloudComputing/PseudoKube": {"bind": "/app", "mode": "ro"},},
+        ports={f"{nodePort}/tcp": nodePort}, # container_port: host_port
+        extra_hosts={"host.docker.internal": "host-gateway"},
+        detach=True,
+        name="cont_" + nodeID
         )
         return nodeID
     
@@ -41,28 +38,46 @@ def registerNode(nodeInfo : dict) :
     
 def updateHeartbeat(hb:dict) :
     try :
-        r.hset("allNodes", hb["nodeID"], "podsCpus", hb["podsCpus"])
-        r.hset("allNodes", hb["nodeID"], "lastAliveAt", hb["lastAliveAt"])
-        r.hset("allNodes", hb["nodeID"], "activePods", hb["activePods"])
-        return 1
-    except :
-        return 0
+        nodeInfo = json.loads(r.hget("allNodes", hb["nodeID"]))
+
+        # Updating heartbeat-related fields
+        nodeInfo['podsCpus'] = hb["podsCpus"]
+        nodeInfo['lastAliveAt'] = hb["lastAliveAt"]
+        nodeInfo['activePods'] = hb["activePods"]
+        nodeInfo['status'] = 'ALIVE'
+
+        # Saving to redis
+        r.hset("allNodes", hb["nodeID"], json.dumps(nodeInfo))
+
+        return "HB Updated"
+    
+    except Exception as e:
+        return str(e)
 
 # Checks if nodes are alive every 10 seconds
 def monitorHeartbeat() :
     while True :
+        #print('Checking...')
         rn = time.time()
         allNodes = r.hgetall('allNodes')
         for nodeID, nodeInfo in allNodes.items() :
             nodeInfo = json.loads(nodeInfo)
-            if rn - nodeInfo['lastAliveAt'] > 15 :
-                r.hset("deadNodes", nodeID, nodeInfo)
+            if rn - nodeInfo.get('lastAliveAt', 0) > 10 :
+                nodeInfo['status'] = 'DEAD'
+                r.hset("allNodes", nodeID, json.dumps(nodeInfo))
+                #print(nodeID)
         time.sleep(10)
 
+# Returns dead nodes in format {nodeID : {nodeInfo}}
 def getDeadNodes() :
-    deadNodes = r.hgetall("deadNodes")
+    deadNodes = {}
+    allNodes = r.hgetall("allNodes")
+    for nodeID, nodeInfo in allNodes.items() :
+        nodeInfo = json.loads(nodeInfo)
+        if nodeInfo['status'] == 'DEAD' :
+            deadNodes[nodeID] = nodeInfo
     return deadNodes
+
     
-# if __name__ == "__main__" :
-#     #print(registerNode({'nodeID': 'LzCFsHhep7zhasWHXtMrzG', 'cpuCount': 1}))
-#     print(createNode(cpuCount=3, nodePort=8001))
+if __name__ == "__main__" :
+    monitorHeartbeat()

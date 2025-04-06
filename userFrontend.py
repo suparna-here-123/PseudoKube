@@ -17,13 +17,14 @@ from nodeManager.nodeUtils import createNode, registerNode, updateHeartbeat, mon
 from random import randint
 from typing import Dict
 from threading import Thread
+from datetime import datetime
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 # Defining templates to extract info from post requests
 class HeartBeat(BaseModel) :
-    nodeID : int
+    nodeID : str
     podsCpus : int
     activePods : int
     lastAliveAt : int
@@ -57,9 +58,21 @@ async def addNode(request : Request, cpuCount:str) :
                     "nodePort" : nodePort,
                    }
         msg = registerNode(nodeInfo)
-        return RedirectResponse(f"/showMsg?msg={msg}")
+        return templates.TemplateResponse("displayNode.html", {
+            "request": request,
+            "msg" : "Node Creation Succeeded!",
+            "nodeID": newNodeID,
+            "nodePort": nodePort,
+            "cpuCount": cpuCount
+        })
     else :
-        return RedirectResponse(f"/showMsg?msg={'Node Creation Failed'}")
+        return templates.TemplateResponse("displayNode.html", {
+            "request": request,
+            "msg" : "Node Creation Failed",
+            "nodeID": "NA",
+            "nodePort": "NA",
+            "cpuCount": "NA"
+        })
 
 @app.post("/heartbeats")
 async def heartbeats(hb : HeartBeat) :
@@ -68,14 +81,17 @@ async def heartbeats(hb : HeartBeat) :
               "lastAliveAt" : hb.lastAliveAt,
               "activePods" : hb.activePods}
 
-    if not updateHeartbeat(hbDict) :
-        print(f"Error updating heartbeat of node {hb.nodeID}")
-
+    resp = updateHeartbeat(hbDict)
+    return {'response' : resp}
 
 @app.get("/deadNodes")
 async def deadNodes(request:Request) :
-    return {"message" : getDeadNodes()}
-
+    dead = getDeadNodes()
+    return templates.TemplateResponse("displayDeadNode.html", {
+        "request": request,
+        "dead": dead,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 
 # GET endpoint coz you can pass podCpus as a queryParam - easy af
@@ -94,5 +110,6 @@ async def showMsg(request : Request, msg : str) :
     return templates.TemplateResponse("message.html", {"request" : request, "msg" : msg})
 
 if __name__ == "__main__" :
-    hbt = Thread(target=monitorHeartbeat, daemon=True)
-    uvicorn.run(app, host="localhost", port=8000)
+    #hbt = Thread(target=monitorHeartbeat, daemon=True)
+    #hbt.start()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
