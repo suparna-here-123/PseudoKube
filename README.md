@@ -27,6 +27,7 @@ Helper functions required by `/userFrontend.py`
 ## nodeInfo format : 
 {nodeID : {
     cpuCount : ___,
+    availableCpu : ___,
            podsInfo : {
                 podID : ___,
                 podCpuCount : ____

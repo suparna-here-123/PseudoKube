@@ -2,6 +2,7 @@
 nodeInfo stored by NM in format : 
 {allNodes : nodeID : {nodeCpus : ___,              -> Number of cpus the node has
                       podsCpus : ___,              -> Number of cpus being used by pods on the node
+                      availableCpu : ___,          -> Number of cpus available on the node
                       nodePort : ___,              -> Port on which node is listening for pod addition requests
                       lastAliveAt : ___,           -> Last heartbeat sent at (in seconds)
                       activePods : ___,            -> Number of active pods in node (len of pods)
@@ -18,6 +19,8 @@ from random import randint
 from typing import Dict
 from threading import Thread
 from datetime import datetime
+from podManager.podScheduler import schedule_pod
+
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -39,8 +42,8 @@ class NodeInfo(BaseModel) :
 
 @app.get("/")
 async def landingPage(request : Request) :
-    return templates.TemplateResponse("addNode.html", {"request" : request})
-
+    return templates.TemplateResponse("schedulePod.html", {"request" : request})
+    # return {"message" : "Landing page"}
 
 # GET endpoint coz I'm passing cpuCount as a queryParam - easy af
 @app.get("/addNode")
@@ -106,8 +109,56 @@ async def addPod(podCpus:int) :
 
 
 @app.get("/showMsg", response_class=HTMLResponse)
-async def showMsg(request : Request, msg : str) :
-    return templates.TemplateResponse("message.html", {"request" : request, "msg" : msg})
+async def showMsg(request: Request, msg: str):
+    parts = msg.split("|", maxsplit=1)
+    msg1 = parts[0]
+
+    # Default values
+    pod_id = ""
+    node_id = ""
+    msg2 = parts[1] if len(parts) > 1 else ""
+
+    # Handle Pod scheduling message
+    if "Pod ID:" in msg2 and "Scheduled on Node:" in msg2:
+        try:
+            pod_part, node_part = msg2.split(" | ")
+            pod_id = pod_part.replace("Pod ID:", "").strip()
+            node_id = node_part.replace("Scheduled on Node:", "").strip()
+        except:
+            msg2 = parts[1] if len(parts) > 1 else ""
+
+    # Handle Node registration message
+    elif "The node ID is :" in msg2:
+        node_id = msg2.replace("The node ID is :", "").strip()
+
+    return templates.TemplateResponse("message.html", {
+        "request": request,
+        "msg1": msg1,
+        "msg2": msg2,
+        "podID": pod_id,
+        "nodeID": node_id
+    })
+
+# Form for sending the podCpuCount param (cpu required for the pod)
+@app.get("/scheduleForm", response_class=HTMLResponse)
+async def showScheduleForm(request: Request):
+    return templates.TemplateResponse("schedulePod.html", {"request": request})
+
+# Taking the podCpuCount param as an int and not a str as it is easier for computation during the best fit scheduling part
+@app.get("/schedulePod")
+async def schedulePod(request: Request, podCpuCount: int):
+    result = schedule_pod(podCpuCount)
+
+    if "podID" in result:
+        msg1 = "Pod scheduled successfully! 🎉"
+        msg2 = f"Pod ID: {result['podID']} | Scheduled on Node: {result['nodeID']}"
+    else:
+        msg1 = "Pod scheduling failed. 😞"
+        msg2 = result["msg"]
+
+    msgStr = f"{msg1}|{msg2}"
+    print(">>> Message string going to /showMsg:", msgStr)  # 🪵 Debug log
+    return RedirectResponse(f"/showMsg?msg={msgStr}", status_code=302)
 
 if __name__ == "__main__" :
     hbt = Thread(target=monitorHeartbeat, daemon=True)

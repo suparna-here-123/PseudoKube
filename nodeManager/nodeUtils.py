@@ -23,15 +23,39 @@ def createNode(cpuCount:int, nodePort:int) :
     except Exception as e:
         return 'createNode ' + str(e)
 
+# def registerNode(nodeInfo : dict) :
+#     try :
+#         r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
+#         # Storing node-specific details
+#         r.hset(nodeInfo["nodeID"], "cpuCount", nodeInfo["cpuCount"])
+        
+#         # Incrementing across-node cpuCount
+#         r.incrby("totalCpuCount", nodeInfo["cpuCount"])
+#         return ["Registered node successfully :D", "The node ID is : " + nodeInfo["nodeID"]]
+    
+#     except Exception as e:
+#         # return "Error registering node :("
+#         return e
+
 def registerNode(nodeInfo : dict) :
     try :
-        # Storing node-specific details
-        r.hset("allNodes", nodeInfo["nodeID"], json.dumps(nodeInfo))
+        r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
+        
+        nodeID = nodeInfo["nodeID"]
+        cpuCount = nodeInfo["cpuCount"]
 
-        # Adding to resource count (shouldn't include cpus occupied by pods)
-        r.incrby("availableCpus", nodeInfo["nodeCpus"])
-        return "Registered node successfully :D"
-    
+        # Store node total CPU
+        r.hset(nodeID, mapping={
+            "cpuCount": cpuCount,
+            "availableCpu": cpuCount
+        })
+
+        # Update global total CPU count
+        r.incrby("totalCpuCount", cpuCount)
+        # Update available CPU count
+        r.incrby("availableCpu", cpuCount)
+
+        return ["Registered node successfully :D", "The node ID is : " + nodeID]
     except Exception as e:
         #return "Error registering node :("
         return 'registerNode ' + str(e)
