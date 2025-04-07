@@ -12,7 +12,7 @@ def createNode(cpuCount:int, nodePort:int) :
         newNode = client.containers.run(
         image="python",
         command=["sh", "-c", f"pip install -r /app/nodeManager/nodeRequirements.txt && python3 /app/nodeManager/nodeScript.py {nodeID} {nodePort} {cpuCount}"],
-        volumes={"/home/suppra/Desktop/CloudComputing/PseudoKube": {"bind": "/app", "mode": "ro"},},
+        volumes={"/home/suyog/Cloud Computing/Project/PseudoKube": {"bind": "/app", "mode": "ro"},},
         ports={f"{nodePort}/tcp": nodePort}, # container_port: host_port
         extra_hosts={"host.docker.internal": "host-gateway"},
         detach=True,
@@ -80,5 +80,5 @@ def getDeadNodes() :
     return deadNodes
 
     
-# if __name__ == "__main__" :
-#     monitorHeartbeat()
+if __name__ == "__main__" :
+    monitorHeartbeat()

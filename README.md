@@ -3,7 +3,6 @@
 ## Prerequisites to run container using python API for docker
 * Add project directory containing files `<project_dir>/nodeManager/nodeScript.py` and `<project_dir>/requirements.txt` to virtual file under `Docker Settings` -> ``
 
-
 ## userFrontend.py
 Frontend of app, accepts user inputs to create and monitor nodes
 
@@ -34,3 +33,7 @@ Helper functions required by `/userFrontend.py`
                 }
             }
 }
+
+## Things to do
+1) Loading page before server is up on the node?
+2) Script to start redis container -> frontend (HEARTBEAT MONITORING THREAD)
