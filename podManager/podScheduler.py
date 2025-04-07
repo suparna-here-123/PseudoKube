@@ -1,4 +1,4 @@
-import redis, os, shortuuid
+import redis, os, shortuuid, json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -6,44 +6,44 @@ load_dotenv()
 
 def schedule_pod(podCpuCount: int):
     r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
-    all_keys = r.keys()
-
+    allNodes = r.hgetall("allNodes")
     best_fit_node = None
     min_leftover = float('inf')
 
     # for every node in the cluster, check if the available CPU is greater than or equal to the podCpuCount. From those that are, find the one with the least leftover CPU and allocate the pod to that node.
 
-    for node_id in all_keys:
-        if node_id in ['totalCpuCount'] or "_pods" in node_id:
-            continue
+    for node_id in allNodes.keys():
+        nodeInfo = json.loads(allNodes[node_id])
+        availableCpu = nodeInfo["availableCpu"]
 
-        try:
-            cpu_available = int(r.hget(node_id, 'availableCpu'))
-
-            if cpu_available >= podCpuCount:
-                leftover = cpu_available - podCpuCount
-                if leftover < min_leftover:
-                    best_fit_node = node_id
-                    min_leftover = leftover
-        except Exception:
-            continue
+        if availableCpu >= podCpuCount:
+            leftover = availableCpu - podCpuCount
+            if leftover < min_leftover:
+                best_fit_node = node_id
+                min_leftover = leftover
 
     if best_fit_node:
         podID = shortuuid.uuid()
 
-        # Decrement availableCpu
-        r.hincrby(best_fit_node, "availableCpu", -podCpuCount)
+        print("Before decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
 
-        # Store pod inside the node’s podsInfo hash
-        r.hset(f"{best_fit_node}_pods", podID, podCpuCount)
+        # Decrement availableCpu[]
+        bestNodeInfo = json.loads(allNodes[best_fit_node])
+        bestNodeInfo['availableCpu'] -= podCpuCount
+        r.hset("allNodes", best_fit_node, json.dumps(bestNodeInfo))
+
+        
+        print("After decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
 
         # Update global total available CPU count
-        r.decrby("totalCpuCount", podCpuCount)
+        r.decrby("clusterCpuCount", podCpuCount)
 
         return {
-            "msg": "Pod scheduled successfully",
+            "msg": "SUCCESS",
             "podID": podID,
-            "nodeID": best_fit_node
+            "nodeID": best_fit_node,
+            "podCpuCount": podCpuCount,
+            "availableCpu": bestNodeInfo['availableCpu']
         }
     else:
-        return {"msg": "No suitable node found. Pod scheduling failed."}
+        return {"msg" : 'FAILED'}

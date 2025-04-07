@@ -14,12 +14,15 @@ from fastapi import FastAPI, Request # HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from nodeManager.nodeUtils import createNode, registerNode, updateHeartbeat, monitorHeartbeat, getDeadNodes
+from nodeManager.nodeUtils import createNode, registerNode, updateHeartbeat, monitorHeartbeat, getDeadNodes, getNodePort
 from random import randint
 from typing import Dict
 from threading import Thread
 from datetime import datetime
 from podManager.podScheduler import schedule_pod
+import requests
+import json
+import subprocess
 
 
 app = FastAPI()
@@ -42,8 +45,13 @@ class NodeInfo(BaseModel) :
 
 @app.get("/")
 async def landingPage(request : Request) :
-    return templates.TemplateResponse("schedulePod.html", {"request" : request})
-    # return {"message" : "Landing page"}
+    return templates.TemplateResponse("landing.html", {"request" : request})
+
+# Form for sending the podCpuCount param (cpu required for the pod)
+@app.get("/nodeScheduleForm", response_class=HTMLResponse)
+async def showScheduleForm(request: Request):
+    return templates.TemplateResponse("addNode.html", {"request": request})
+
 
 # GET endpoint coz I'm passing cpuCount as a queryParam - easy af
 @app.get("/addNode")
@@ -57,13 +65,14 @@ async def addNode(request : Request, cpuCount:str) :
         # ...add to cluster resource pool + register
         nodeInfo = {"nodeID" : newNodeID, 
                     "nodeCpus" : cpuCount,
+                    "availableCpu" : cpuCount,
                     "podsCpus" : 0,
                     "nodePort" : nodePort,
                    }
         msg = registerNode(nodeInfo)
         return templates.TemplateResponse("displayNode.html", {
             "request": request,
-            "msg" : "Node Creation Succeeded!",
+            "msg" : msg,
             "nodeID": newNodeID,
             "nodePort": nodePort,
             "cpuCount": cpuCount
@@ -71,7 +80,7 @@ async def addNode(request : Request, cpuCount:str) :
     else :
         return templates.TemplateResponse("displayNode.html", {
             "request": request,
-            "msg" : "Node Creation Failed",
+            "msg" : msg,
             "nodeID": "NA",
             "nodePort": "NA",
             "cpuCount": "NA"
@@ -148,19 +157,31 @@ async def showScheduleForm(request: Request):
 @app.get("/schedulePod")
 async def schedulePod(request: Request, podCpuCount: int):
     result = schedule_pod(podCpuCount)
+    flag = 0
 
-    if "podID" in result:
+    if result["msg"] == "SUCCESS":
+        # Sending "schedule pod" message to the best fit node'
+        nodePort = getNodePort(result["nodeID"])
+        nodeResponse = requests.get(f"http://localhost:{nodePort}/addPod?podCpus={result['podCpuCount']}&podID={result['podID']}&availableCpu={result['availableCpu']}") 
+        print("Node response: ", nodeResponse.json())  # 🪵 Debug log
+        print(type(nodeResponse.json()))  # 🪵 Debug log
+        if nodeResponse.status_code == 200 and nodeResponse.json().get("msg") == "SUCCESS":
+            flag = 1
+    if flag == 1:
+        # Setting confirmation message
         msg1 = "Pod scheduled successfully! 🎉"
         msg2 = f"Pod ID: {result['podID']} | Scheduled on Node: {result['nodeID']}"
-    else:
+
+    else :
         msg1 = "Pod scheduling failed. 😞"
         msg2 = result["msg"]
 
     msgStr = f"{msg1}|{msg2}"
     print(">>> Message string going to /showMsg:", msgStr)  # 🪵 Debug log
+
     return RedirectResponse(f"/showMsg?msg={msgStr}", status_code=302)
 
 if __name__ == "__main__" :
-    hbt = Thread(target=monitorHeartbeat, daemon=True)
+    hbt = Thread(target=monitorHeartbeat)
     hbt.start()
     uvicorn.run(app, host="0.0.0.0", port=8000)

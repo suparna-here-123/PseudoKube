@@ -9,7 +9,8 @@ import time, json
 import uvicorn, shortuuid
 from fastapi.templating import Jinja2Templates
 from threading import Thread
-from fastapi import FastAPI, Request # HTTPException
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 # Extracting unique node ID from command line argument
 nodeID = str(sys.argv[1])
@@ -34,10 +35,29 @@ async def nodeLanding(request:Request) :
         "cpuCount": cpuCount
     })
 
+# using GET endpoint coz I'm passing cpuCount as a queryParam - easy af
 # Node should send confirmation of pod creation
 @app.get("/addPod")
-async def addPod(request:Request, podCpus:int) :
-    pass
+async def addPod(request:Request, podCpus:int, podID:str, availableCpu:int) :
+    global cpuCount
+    try:
+        pods[podID] = podCpus
+        cpuCount = availableCpu
+        return JSONResponse(status_code=200, content={"msg": "SUCCESS"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"msg": "FAILED", "error": str(e)})
+    
+@app.get("/viewPods")
+async def viewPods(request:Request) :
+    return templates.TemplateResponse("podsInfo.html", {
+        "request": request,
+        "pods": pods
+    })
+
+
+
+
+
 
 @app.get("/lastHB")
 async def lastHBAt(request : Request) :

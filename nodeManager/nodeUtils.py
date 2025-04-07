@@ -2,6 +2,11 @@ import docker, shortuuid, json
 import redis, os, time, requests
 from dotenv import load_dotenv
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 load_dotenv()
 r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT")), decode_responses=True)
 
@@ -20,45 +25,24 @@ def createNode(cpuCount:int, nodePort:int) :
         )
         return nodeID
     
-    except Exception as e:
-        return 'createNode ' + str(e)
+    except :
+        return 0
 
-# def registerNode(nodeInfo : dict) :
-#     try :
-#         r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
-#         # Storing node-specific details
-#         r.hset(nodeInfo["nodeID"], "cpuCount", nodeInfo["cpuCount"])
-        
-#         # Incrementing across-node cpuCount
-#         r.incrby("totalCpuCount", nodeInfo["cpuCount"])
-#         return ["Registered node successfully :D", "The node ID is : " + nodeInfo["nodeID"]]
-    
-#     except Exception as e:
-#         # return "Error registering node :("
-#         return e
 
 def registerNode(nodeInfo : dict) :
     try :
-        r = redis.Redis(host='localhost', port=os.getenv("REDIS_PORT"), decode_responses=True)
-        
+        # Storing node-specific details
         nodeID = nodeInfo["nodeID"]
-        cpuCount = nodeInfo["cpuCount"]
+        nodeInfo.pop("nodeID")
+        r.hset("allNodes", nodeID, json.dumps(nodeInfo))
 
-        # Store node total CPU
-        r.hset(nodeID, mapping={
-            "cpuCount": cpuCount,
-            "availableCpu": cpuCount
-        })
-
-        # Update global total CPU count
-        r.incrby("totalCpuCount", cpuCount)
-        # Update available CPU count
-        r.incrby("availableCpu", cpuCount)
-
-        return ["Registered node successfully :D", "The node ID is : " + nodeID]
+        # Adding to resource count (shouldn't include cpus occupied by pods)
+        r.incrby("clusterCpuCount", nodeInfo["nodeCpus"])
+        return "Registered node successfully :D"
+    
     except Exception as e:
-        #return "Error registering node :("
-        return 'registerNode ' + str(e)
+        return "Error registering node :("
+    
     
 def updateHeartbeat(hb:dict) :
     try :
@@ -79,10 +63,12 @@ def updateHeartbeat(hb:dict) :
         return str(e)
 
 # Checks if nodes are alive every 10 seconds
+
+
+
 def monitorHeartbeat() :
     while True :
-        time.sleep(5)
-        print('Checking...')
+        logger.info("Heartbeat alive")
         rn = time.time()
         allNodes = r.hgetall('allNodes')
         for nodeID, nodeInfo in allNodes.items() :
@@ -91,6 +77,7 @@ def monitorHeartbeat() :
                 nodeInfo['status'] = 'DEAD'
                 r.hset("allNodes", nodeID, json.dumps(nodeInfo))
                 print(nodeID)
+        time.sleep(5)
 
 # Returns dead nodes in format {nodeID : {nodeInfo}}
 def getDeadNodes() :
@@ -103,6 +90,15 @@ def getDeadNodes() :
             deadNodes[nodeID] = nodeInfo
     return deadNodes
 
+
+# Retrieve best fit node's port during pod assignment
+def getNodePort(nodeID:str) :
+    try :
+        nodeInfo = json.loads(r.hget("allNodes", nodeID))
+        return nodeInfo["nodePort"]
+    
+    except Exception as e:
+        return str(e)
     
 if __name__ == "__main__" :
     monitorHeartbeat()
