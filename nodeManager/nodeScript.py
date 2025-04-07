@@ -54,11 +54,6 @@ async def viewPods(request:Request) :
         "pods": pods
     })
 
-
-
-
-
-
 @app.get("/lastHB")
 async def lastHBAt(request : Request) :
     return {"Last Heartbeat At" : lastHB}
