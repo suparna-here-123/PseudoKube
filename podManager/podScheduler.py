@@ -25,15 +25,19 @@ def schedule_pod(podCpuCount: int):
     if best_fit_node:
         podID = shortuuid.uuid()
 
-        print("Before decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
+        # print("Before decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
 
         # Decrement availableCpu[]
         bestNodeInfo = json.loads(allNodes[best_fit_node])
         bestNodeInfo['availableCpu'] -= podCpuCount
+        
+        # Save new pod info under redis
+        newPodInfo = {"podID" : podID, "podCpuCount" : podCpuCount}
+        bestNodeInfo['podsInfo'].append(newPodInfo)
+
         r.hset("allNodes", best_fit_node, json.dumps(bestNodeInfo))
 
-        
-        print("After decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
+        # print("After decrementing : ", r.hget('allNodes', best_fit_node))  # 🪵 Debug log
 
         # Update global total available CPU count
         r.decrby("clusterCpuCount", podCpuCount)

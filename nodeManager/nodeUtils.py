@@ -2,11 +2,6 @@ import docker, shortuuid, json
 import redis, os, time, requests
 from dotenv import load_dotenv
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
 load_dotenv()
 r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT")), decode_responses=True)
 
@@ -68,7 +63,6 @@ def updateHeartbeat(hb:dict) :
 
 def monitorHeartbeat() :
     while True :
-        logger.info("Heartbeat alive")
         rn = time.time()
         allNodes = r.hgetall('allNodes')
         for nodeID, nodeInfo in allNodes.items() :
@@ -76,7 +70,6 @@ def monitorHeartbeat() :
             if rn - nodeInfo.get('lastAliveAt', 0) > 10 :
                 nodeInfo['status'] = 'DEAD'
                 r.hset("allNodes", nodeID, json.dumps(nodeInfo))
-                print(nodeID)
         time.sleep(5)
 
 # Returns dead nodes in format {nodeID : {nodeInfo}}

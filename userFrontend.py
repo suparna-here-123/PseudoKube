@@ -1,7 +1,8 @@
 '''
 nodeInfo stored by NM in format : 
 {allNodes : nodeID : {nodeCpus : ___,              -> Number of cpus the node has
-                      podsCpus : ___,              -> Number of cpus being used by pods on the node
+                      podsCpus : ___,              -> Number of cpus being used by pods on the node,
+                      podsInfo : [],
                       availableCpu : ___,          -> Number of cpus available on the node
                       nodePort : ___,              -> Port on which node is listening for pod addition requests
                       lastAliveAt : ___,           -> Last heartbeat sent at (in seconds)
@@ -23,12 +24,20 @@ from podManager.podScheduler import schedule_pod
 import requests
 import json
 import subprocess
+from contextlib import asynccontextmanager
 
+async def startup_event():
+    Thread(target=monitorHeartbeat, daemon=True).start()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    await startup_event()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
-# Defining templates to extract info from post requests
 class HeartBeat(BaseModel) :
     nodeID : str
     podsCpus : int
@@ -38,6 +47,7 @@ class HeartBeat(BaseModel) :
 class NodeInfo(BaseModel) :
     nodeCpus : int
     podsCpus : int
+    podsInfo : list
     nodePort : int
     lastAliveAt : int
     activePods : int
@@ -65,6 +75,7 @@ async def addNode(request : Request, cpuCount:str) :
         # ...add to cluster resource pool + register
         nodeInfo = {"nodeID" : newNodeID, 
                     "nodeCpus" : cpuCount,
+                    "podsInfo" : [],
                     "availableCpu" : cpuCount,
                     "podsCpus" : 0,
                     "nodePort" : nodePort,
@@ -182,6 +193,4 @@ async def schedulePod(request: Request, podCpuCount: int):
     return RedirectResponse(f"/showMsg?msg={msgStr}", status_code=302)
 
 if __name__ == "__main__" :
-    hbt = Thread(target=monitorHeartbeat)
-    hbt.start()
     uvicorn.run(app, host="0.0.0.0", port=8000)
