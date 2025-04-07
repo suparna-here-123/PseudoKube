@@ -26,6 +26,8 @@ import json
 import subprocess
 from contextlib import asynccontextmanager
 
+running_nodes={}
+
 async def startup_event():
     Thread(target=monitorHeartbeat, daemon=True).start()
 
@@ -70,6 +72,12 @@ async def addNode(request : Request, cpuCount:str) :
     cpuCount = int(cpuCount)
     nodePort = randint(8001, 9000)
     newNodeID = createNode(cpuCount, nodePort)
+
+    running_nodes[newNodeID] = {
+        "port": nodePort,
+        "cpu": cpuCount
+    }
+
     # If node creation was successful...
     if newNodeID :
         # ...add to cluster resource pool + register
@@ -96,6 +104,13 @@ async def addNode(request : Request, cpuCount:str) :
             "nodePort": "NA",
             "cpuCount": "NA"
         })
+    
+@app.get("/viewNodes")
+async def viewNodes(request: Request):
+    return templates.TemplateResponse("allNodes.html", {
+        "request": request,
+        "nodes": running_nodes
+    })
 
 @app.post("/heartbeats")
 async def heartbeats(hb : HeartBeat) :
