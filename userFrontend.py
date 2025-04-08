@@ -26,7 +26,7 @@ import json
 import subprocess
 from contextlib import asynccontextmanager
 
-running_nodes={}
+running_nodes=[]
 
 async def startup_event():
     Thread(target=monitorHeartbeat, daemon=True).start()
@@ -68,15 +68,13 @@ async def showScheduleForm(request: Request):
 # GET endpoint coz I'm passing cpuCount as a queryParam - easy af
 @app.get("/addNode")
 async def addNode(request : Request, cpuCount:str) :
+    global running_nodes
     # Spawn new node with cpuCount
     cpuCount = int(cpuCount)
     nodePort = randint(8001, 9000)
     newNodeID = createNode(cpuCount, nodePort)
 
-    running_nodes[newNodeID] = {
-        "port": nodePort,
-        "cpu": cpuCount
-    }
+    running_nodes.append({"nodeID": newNodeID, "nodePort": nodePort})
 
     # If node creation was successful...
     if newNodeID :

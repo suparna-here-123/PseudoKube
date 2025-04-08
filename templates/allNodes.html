@@ -44,12 +44,11 @@
 <body>
     <h1>All Active Nodes</h1>
     <div class="grid">
-        {% for nodeID, info in nodes.items() %}
+        {% for node in nodes %}
         <div class="card">
-            <h2>Node {{ nodeID }}</h2>
-            <p class="details">Port: <span class="highlight">{{ info.port }}</span></p>
-            <p class="details">CPUs: <span class="highlight">{{ info.cpu }}</span></p>
-            <a href="http://localhost:{{ info.port }}/viewPods">View Pods</a>
+            <h2>Node {{ node['nodeID'] }}</h2>
+            <p class="details">Port: <span class="highlight">{{ node["nodePort"] }}</span></p>
+            <a href="http://localhost:{{ node['nodePort'] }}">View Node Details</a>
         </div>
         {% endfor %}
     </div>
