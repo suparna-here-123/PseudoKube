@@ -15,7 +15,8 @@ from fastapi import FastAPI, Request # HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from nodeManager.nodeUtils import createNode, registerNode, updateHeartbeat, monitorHeartbeat, getDeadNodes, getNodePort
+from nodeManager.nodeUtils import createNode, registerNode, getNodePort
+from healthMonitor.healthUtils import updateHeartbeat, monitorHeartbeat, getDeadNodes
 from random import randint
 from typing import Dict
 from threading import Thread
@@ -25,6 +26,10 @@ import requests
 import json
 import subprocess
 from contextlib import asynccontextmanager
+import redis
+import os
+import random
+import string
 
 running_nodes=[]
 
@@ -175,35 +180,130 @@ async def showMsg(request: Request, msg: str):
 # Form for sending the podCpuCount param (cpu required for the pod)
 @app.get("/scheduleForm", response_class=HTMLResponse)
 async def showScheduleForm(request: Request):
-    return templates.TemplateResponse("schedulePod.html", {"request": request})
+    # Generate a unique pod ID
+    podID = ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+    return templates.TemplateResponse("schedulePod.html", {
+        "request": request,
+        "podID": podID
+    })
 
 # Taking the podCpuCount param as an int and not a str as it is easier for computation during the best fit scheduling part
+@app.get("/schedulePodWithAlgorithm")
+async def schedulePodWithAlgorithm(request: Request, podID: str, podCpuCount: int, algorithm: str = None):
+    if algorithm is None:
+        # If no algorithm specified, show the scheduling options page
+        return templates.TemplateResponse("schedulingOptions.html", {
+            "request": request,
+            "podID": podID,
+            "podCpuCount": podCpuCount
+        })
+    
+    # Simulate the scheduling without actually scheduling
+    result = simulate_scheduling(podCpuCount, algorithm)
+    
+    if result:
+        return {
+            "success": True,
+            "podID": podID,
+            "nodeID": result["nodeID"],
+            "nodePort": result["nodePort"],
+            "availableCpu": result["availableCpu"],
+            "nodeCpus": result["nodeCpus"],
+            "message": f"Simulated scheduling using {algorithm} algorithm"
+        }
+    
+    return {
+        "success": False,
+        "message": "No suitable node found for scheduling"
+    }
+
 @app.get("/schedulePod")
 async def schedulePod(request: Request, podCpuCount: int):
+    # This is the actual scheduling endpoint that uses best-fit
     result = schedule_pod(podCpuCount)
     flag = 0
 
     if result["msg"] == "SUCCESS":
-        # Sending "schedule pod" message to the best fit node'
         nodePort = getNodePort(result["nodeID"])
         nodeResponse = requests.get(f"http://localhost:{nodePort}/addPod?podCpus={result['podCpuCount']}&podID={result['podID']}&availableCpu={result['availableCpu']}") 
-        print("Node response: ", nodeResponse.json())  # 🪵 Debug log
-        print(type(nodeResponse.json()))  # 🪵 Debug log
         if nodeResponse.status_code == 200 and nodeResponse.json().get("msg") == "SUCCESS":
             flag = 1
-    if flag == 1:
-        # Setting confirmation message
-        msg1 = "Pod scheduled successfully! 🎉"
-        msg2 = f"Pod ID: {result['podID']} | Scheduled on Node: {result['nodeID']}"
+            # Get node information from Redis
+            r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT", "55000")), decode_responses=True)
+            nodeInfo = json.loads(r.hget("allNodes", result["nodeID"]))
+            
+            return templates.TemplateResponse("message.html", {
+                "request": request,
+                "msg1": "Pod scheduled successfully! 🎉",
+                "msg2": f"Pod ID: {result['podID']} | Scheduled on Node: {result['nodeID']} | Node Port: {nodePort} | Available CPU: {nodeInfo['availableCpu']}"
+            })
+    
+    return templates.TemplateResponse("message.html", {
+        "request": request,
+        "msg1": "Pod scheduling failed. 😞",
+        "msg2": result["msg"]
+    })
 
-    else :
-        msg1 = "Pod scheduling failed. 😞"
-        msg2 = result["msg"]
-
-    msgStr = f"{msg1}|{msg2}"
-    print(">>> Message string going to /showMsg:", msgStr)  # 🪵 Debug log
-
-    return RedirectResponse(f"/showMsg?msg={msgStr}", status_code=302)
+def simulate_scheduling(podCpuCount: int, algorithm: str):
+    r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT", "55000")), decode_responses=True)
+    allNodes = r.hgetall("allNodes")
+    
+    # Convert nodes to list for consistent ordering
+    nodes_list = [(nodeID, json.loads(nodeInfo)) for nodeID, nodeInfo in allNodes.items()]
+    
+    if algorithm == "first-fit":
+        # First Fit: Allocate to first node that has enough resources
+        for nodeID, nodeInfo in nodes_list:
+            if nodeInfo['availableCpu'] >= podCpuCount:
+                # Get the next available container port
+                container_port = 8001 + len(nodeInfo['podsInfo'])
+                return {
+                    "nodeID": nodeID,
+                    "nodePort": nodeInfo['nodePort'],  # Node's listening port
+                    "containerPort": container_port,   # Container's port
+                    "availableCpu": nodeInfo['availableCpu'] - podCpuCount,
+                    "nodeCpus": nodeInfo['availableCpu']
+                }
+    
+    elif algorithm == "best-fit":
+        # Best Fit: Allocate to node with smallest available CPU that can fit the pod
+        best_node = None
+        min_leftover = float('inf')
+        
+        for nodeID, nodeInfo in nodes_list:
+            if nodeInfo['availableCpu'] >= podCpuCount:
+                leftover = nodeInfo['availableCpu'] - podCpuCount
+                if leftover < min_leftover:
+                    min_leftover = leftover
+                    container_port = 8001 + len(nodeInfo['podsInfo'])
+                    best_node = {
+                        "nodeID": nodeID,
+                        "nodePort": nodeInfo['nodePort'],
+                        "containerPort": container_port,
+                        "availableCpu": nodeInfo['availableCpu'] - podCpuCount,
+                        "nodeCpus": nodeInfo['availableCpu']
+                    }
+        return best_node
+    
+    elif algorithm == "worst-fit":
+        # Worst Fit: Allocate to node with largest available CPU
+        worst_node = None
+        max_available = -1
+        
+        for nodeID, nodeInfo in nodes_list:
+            if nodeInfo['availableCpu'] >= podCpuCount and nodeInfo['availableCpu'] > max_available:
+                max_available = nodeInfo['availableCpu']
+                container_port = 8001 + len(nodeInfo['podsInfo'])
+                worst_node = {
+                    "nodeID": nodeID,
+                    "nodePort": nodeInfo['nodePort'],
+                    "containerPort": container_port,
+                    "availableCpu": nodeInfo['availableCpu'] - podCpuCount,
+                    "nodeCpus": nodeInfo['availableCpu']
+                }
+        return worst_node
+    
+    return None
 
 if __name__ == "__main__" :
     uvicorn.run(app, host="0.0.0.0", port=8000)

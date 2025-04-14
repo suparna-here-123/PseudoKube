@@ -1,9 +1,11 @@
 import docker, shortuuid, json
 import redis, os, time, requests
 from dotenv import load_dotenv
+from healthMonitor.healthUtils import updateHeartbeat, monitorHeartbeat, getDeadNodes
 
 load_dotenv()
-r = redis.Redis(host='localhost', port=int(os.getenv("REDIS_PORT")), decode_responses=True)
+REDIS_PORT = os.getenv("REDIS_PORT", "55000")  # Default to 55000 if not set
+r = redis.Redis(host='localhost', port=int(REDIS_PORT), decode_responses=True)
 
 def createNode(cpuCount:int, nodePort:int) :
     try :
@@ -37,52 +39,6 @@ def registerNode(nodeInfo : dict) :
     
     except Exception as e:
         return "Error registering node :("
-    
-    
-def updateHeartbeat(hb:dict) :
-    try :
-        nodeInfo = json.loads(r.hget("allNodes", hb["nodeID"]))
-
-        # Updating heartbeat-related fields
-        nodeInfo['podsCpus'] = hb["podsCpus"]
-        nodeInfo['lastAliveAt'] = hb["lastAliveAt"]
-        nodeInfo['activePods'] = hb["activePods"]
-        nodeInfo['status'] = 'ALIVE'
-
-        # Saving to redis
-        r.hset("allNodes", hb["nodeID"], json.dumps(nodeInfo))
-
-        return "HB Updated"
-    
-    except Exception as e:
-        return str(e)
-
-# Checks if nodes are alive every 10 seconds
-
-
-
-def monitorHeartbeat() :
-    while True :
-        rn = time.time()
-        allNodes = r.hgetall('allNodes')
-        for nodeID, nodeInfo in allNodes.items() :
-            nodeInfo = json.loads(nodeInfo)
-            if rn - nodeInfo.get('lastAliveAt', 0) > 10 :
-                nodeInfo['status'] = 'DEAD'
-                r.hset("allNodes", nodeID, json.dumps(nodeInfo))
-        time.sleep(5)
-
-# Returns dead nodes in format {nodeID : {nodeInfo}}
-def getDeadNodes() :
-    deadNodes = {}
-    allNodes = r.hgetall("allNodes")
-    for nodeID, nodeInfo in allNodes.items() :
-        nodeInfo = json.loads(nodeInfo)
-        if nodeInfo['status'] == 'DEAD' :
-            nodeInfo['aliveMinsAgo'] = (time.time() - nodeInfo['lastAliveAt']) // 60
-            deadNodes[nodeID] = nodeInfo
-    return deadNodes
-
 
 # Retrieve best fit node's port during pod assignment
 def getNodePort(nodeID:str) :
@@ -92,6 +48,6 @@ def getNodePort(nodeID:str) :
     
     except Exception as e:
         return str(e)
-    
+
 if __name__ == "__main__" :
     monitorHeartbeat()
