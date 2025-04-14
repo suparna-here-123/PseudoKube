@@ -1,5 +1,6 @@
 import docker, shortuuid, json
 import redis, os, time, requests
+from podManager.podScheduler import schedule_pod
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -72,7 +73,7 @@ def monitorHeartbeat() :
                 r.hset("allNodes", nodeID, json.dumps(nodeInfo))
                 #Failure recovery
                 try:
-                    nodeInfo = json.loads(r.hget("allNodes", nodeID))
+                    #nodeInfo = json.loads(r.hget("allNodes", nodeID))
                     for p, c in zip(nodeInfo["activePods"],nodeInfo['podsCpus']):
                         schedule_pod(c)
 
