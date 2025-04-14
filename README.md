@@ -22,6 +22,7 @@ Sends heartbeats to node manager, maintains pod array
 
 ## nodeUtils
 Helper functions required by `/userFrontend.py`
+Add the PROJECT_PATH variable (absolute path) to the .env file to allow access to your project folder
 
 ## nodeInfo format : 
 

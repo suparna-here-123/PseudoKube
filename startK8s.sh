@@ -1,5 +1,3 @@
-#!/usr/bin/bash
-
 docker pull redis:latest
 
 docker run -d \
