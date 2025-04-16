@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scheduling Options</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            padding: 40px;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .pod-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .algorithm-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .algorithm-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .first-fit {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .best-fit {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .worst-fit {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .algorithm-btn:hover {
+            opacity: 0.9;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #666;
+        }
+
+        .back-link:hover {
+            color: #333;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .simulation-note {
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .node-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Choose Scheduling Algorithm</h2>
+        
+        <div class="pod-info">
+            <p><strong>Pod ID:</strong> {{ podID }}</p>
+            <p><strong>CPU Count:</strong> {{ podCpuCount }}</p>
+        </div>
+
+        <div class="algorithm-buttons">
+            <button class="algorithm-btn first-fit" onclick="schedulePod('first-fit')">First Fit Algorithm</button>
+            <button class="algorithm-btn best-fit" onclick="schedulePod('best-fit')">Best Fit Algorithm</button>
+            <button class="algorithm-btn worst-fit" onclick="schedulePod('worst-fit')">Worst Fit Algorithm</button>
+        </div>
+
+        <div id="result" class="result-container">
+            <h3>Scheduling Simulation Result</h3>
+            <p id="result-message"></p>
+            <div id="node-details" class="node-info"></div>
+            <p class="simulation-note">Note: This is a simulation only. No actual pod scheduling has occurred. Click "Schedule Pod" below to actually schedule the pod using Best Fit algorithm.</p>
+            <button class="algorithm-btn best-fit" onclick="scheduleActualPod()" style="margin-top: 15px;">Schedule Pod (Best Fit)</button>
+        </div>
+
+        <a href="/" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        function schedulePod(algorithm) {
+            const resultDiv = document.getElementById('result');
+            const resultMessage = document.getElementById('result-message');
+            const nodeDetails = document.getElementById('node-details');
+            
+            // Show loading state
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result-container';
+            resultMessage.textContent = 'Simulating scheduling...';
+            nodeDetails.innerHTML = '';
+
+            // Make API call to simulate scheduling
+            fetch(`/schedulePodWithAlgorithm?podID={{ podID }}&podCpuCount={{ podCpuCount }}&algorithm=${algorithm}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.className = 'result-container success';
+                        resultMessage.innerHTML = `
+                            <strong>Simulation Result:</strong><br>
+                            Pod ID: ${data.podID}<br>
+                            Algorithm Used: ${algorithm}
+                        `;
+                        nodeDetails.innerHTML = `
+                            <strong>Selected Node Details:</strong><br>
+                            Node ID: ${data.nodeID}<br>
+                            Node Port: ${data.nodePort}<br>
+                            Container Port: ${data.containerPort}<br>
+                            Total Node CPU: ${data.nodeCpus}<br>
+                            Available CPU: ${data.availableCpu}
+                        `;
+                    } else {
+                        resultDiv.className = 'result-container error';
+                        resultMessage.textContent = `Simulation failed: ${data.message}`;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.className = 'result-container error';
+                    resultMessage.textContent = `Error: ${error.message}`;
+                });
+        }
+
+        function scheduleActualPod() {
+            // Redirect to actual scheduling
+            window.location.href = `/schedulePod?podCpuCount={{ podCpuCount }}`;
+        }
+    </script>
+</body>
+</html> 

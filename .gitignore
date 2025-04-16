@@ -2,3 +2,4 @@ __pycache__
 nodeManager/__pycache__
 pseudoK8sEnv
 nodeManager/.env
+.DS_Store
