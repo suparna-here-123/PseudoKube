@@ -102,7 +102,7 @@ async def addNode(request : Request, cpuCount:str) :
     else :
         return templates.TemplateResponse("displayNode.html", {
             "request": request,
-            "msg" : msg,
+            "msg" : "Node couldn't be created",
             "nodeID": "NA",
             "nodePort": "NA",
             "cpuCount": "NA"
