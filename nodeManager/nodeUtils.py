@@ -1,5 +1,6 @@
 import docker, shortuuid, json
 import redis, os, time, requests
+from podManager.podScheduler import schedule_pod
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -70,6 +71,14 @@ def monitorHeartbeat() :
             if rn - nodeInfo.get('lastAliveAt', 0) > 10 :
                 nodeInfo['status'] = 'DEAD'
                 r.hset("allNodes", nodeID, json.dumps(nodeInfo))
+                #Failure recovery
+                try:
+                    #nodeInfo = json.loads(r.hget("allNodes", nodeID))
+                    for p, c in zip(nodeInfo["activePods"],nodeInfo['podsCpus']):
+                        schedule_pod(c)
+
+                except Exception as e:
+                    return str(e)
         time.sleep(5)
 
 # Returns dead nodes in format {nodeID : {nodeInfo}}
