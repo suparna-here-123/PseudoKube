@@ -31,6 +31,8 @@ def registerNode(nodeInfo : dict) :
         # Storing node-specific details
         nodeID = nodeInfo["nodeID"]
         nodeInfo.pop("nodeID")
+        # Add status field
+        nodeInfo['status'] = 'ALIVE'
         r.hset("allNodes", nodeID, json.dumps(nodeInfo))
 
         # Adding to resource count (shouldn't include cpus occupied by pods)
@@ -39,15 +41,6 @@ def registerNode(nodeInfo : dict) :
     
     except Exception as e:
         return "Error registering node :("
-
-# Retrieve best fit node's port during pod assignment
-def getNodePort(nodeID:str) :
-    try :
-        nodeInfo = json.loads(r.hget("allNodes", nodeID))
-        return nodeInfo["nodePort"]
-    
-    except Exception as e:
-        return str(e)
 
 if __name__ == "__main__" :
     monitorHeartbeat()

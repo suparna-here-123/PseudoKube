@@ -15,7 +15,8 @@ from fastapi import FastAPI, Request # HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from nodeManager.nodeUtils import createNode, registerNode, getNodePort
+from nodeManager.nodeUtils import createNode, registerNode
+from utils.redisUtils import getNodePort
 from healthMonitor.healthUtils import updateHeartbeat, monitorHeartbeat, getDeadNodes
 from random import randint
 from typing import Dict
